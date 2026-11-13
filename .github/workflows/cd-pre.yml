@@ -72,10 +72,31 @@ jobs:
               run: node -e "console.log('PACKAGE_VERSION=' + require('./package.json').version + '\nPACKAGE_NAME=' + require('./package.json').name + '-' + require('./package.json').version)" >> $GITHUB_ENV
             - name: Package extension
               run: pnpm run package --pre-release
+            - name: Report Rollouts deployment start
+              env:
+                CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+                CHANGE_MONITOR_ENV: "Publish pre-release"
+                CHANGE_MONITOR_SERVICE: "gitlens"
+                CHANGE_MONITOR_SOURCE: ${{ github.server_url }}/${{ github.repository }}
+                CHANGE_MONITOR_ACTOR: "github-actions:${{ github.workflow }}:${{ github.job }}:gitlens:Publish pre-release"
+              run: |
+                export DEPLOY_VERSION="$(git rev-parse HEAD)"
+                bash .github/scripts/rollouts-reporter.sh bootstrap
+                bash .github/scripts/rollouts-reporter.sh start
             - name: Publish extension to VS Code Marketplace
               run: pnpm vsce publish --no-dependencies --pre-release --packagePath ./${{ env.PACKAGE_NAME }}.vsix -p ${{ secrets.GITLENS_VSCODE_MARKETPLACE_PAT }}
             - name: Publish extension to OpenVSIX
               run: pnpm ovsx publish ./${{ env.PACKAGE_NAME }}.vsix -p ${{ secrets.GITLENS_OPENVSIX_PAT }}
+            - name: Report Rollouts deployment finish
+              if: always()
+              env:
+                CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+                CHANGE_MONITOR_ENV: "Publish pre-release"
+                CHANGE_MONITOR_SERVICE: "gitlens"
+                CHANGE_MONITOR_SOURCE: ${{ github.server_url }}/${{ github.repository }}
+                CHANGE_MONITOR_ACTOR: "github-actions:${{ github.workflow }}:${{ github.job }}:gitlens:Publish pre-release"
+                CHANGE_MONITOR_OUTCOME: ${{ job.status }}
+              run: bash .github/scripts/rollouts-reporter.sh finish
             - name: Tag pre-release commit
               env:
                   TAG: releases/ext/pre/v${{ env.PACKAGE_VERSION }}
