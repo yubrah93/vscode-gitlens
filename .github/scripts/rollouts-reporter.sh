@@ -42,7 +42,7 @@ rollouts_exchange() {
     return 0
   fi
   exchange_body="$(mktemp)"
-  exchange_status="$(curl -sS -o "$exchange_body" -w "%{http_code}" -X POST https://api2.cursor.sh/auth/exchange_user_api_key \
+  exchange_status="$(curl -sS --connect-timeout 10 --max-time 20 -o "$exchange_body" -w "%{http_code}" -X POST https://api2.cursor.sh/auth/exchange_user_api_key \
     -H "Authorization: Bearer ${CURSOR_API_KEY}" -H "Content-Type: application/json" -d '{}')" || {
     echo "Rollouts reporter: Rollouts API unavailable, deploy not reported" >&2
     rollouts_halt
@@ -81,7 +81,7 @@ rollouts_post() {
   body="$3"
   allow409="${4:-}"
   response="$(mktemp)"
-  status="$(curl -sS -o "$response" -w "%{http_code}" -X POST "$url" \
+  status="$(curl -sS --connect-timeout 10 --max-time 20 -o "$response" -w "%{http_code}" -X POST "$url" \
     -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" -H "Connect-Protocol-Version: 1" \
     -d "$body")" || {
     echo "Rollouts reporter: ${call} failed before a response. The deploy continues." >&2
@@ -178,7 +178,7 @@ case "$cmd" in
       rollouts_halt
     fi
     if [ -z "${CHANGE_MONITOR_ACTOR:-}" ]; then
-      CHANGE_MONITOR_ACTOR="github-actions:${GITHUB_WORKFLOW:-local}:${GITHUB_JOB:-local}:${CHANGE_MONITOR_SERVICE}:${CHANGE_MONITOR_ENV}"
+      CHANGE_MONITOR_ACTOR="github-actions:${GITHUB_RUN_ID:-local}:${GITHUB_RUN_ATTEMPT:-1}:${GITHUB_WORKFLOW:-local}:${GITHUB_JOB:-local}:${CHANGE_MONITOR_SERVICE}:${CHANGE_MONITOR_ENV}"
     fi
     list_body="$(mktemp)"
     rollouts_body=""
@@ -248,7 +248,7 @@ case "$cmd" in
       exit 0
     fi
     if [ -z "${CHANGE_MONITOR_ACTOR:-}" ]; then
-      CHANGE_MONITOR_ACTOR="github-actions:${GITHUB_WORKFLOW:-local}:${GITHUB_JOB:-local}:${CHANGE_MONITOR_SERVICE:-}:${CHANGE_MONITOR_ENV:-}"
+      CHANGE_MONITOR_ACTOR="github-actions:${GITHUB_RUN_ID:-local}:${GITHUB_RUN_ATTEMPT:-1}:${GITHUB_WORKFLOW:-local}:${GITHUB_JOB:-local}:${CHANGE_MONITOR_SERVICE:-}:${CHANGE_MONITOR_ENV:-}"
     fi
     if [ -z "${ROLLOUTS_DEPLOYMENT:-}" ] && [ -f "$rollouts_deployment_file" ]; then
       ROLLOUTS_DEPLOYMENT="$(cat "$rollouts_deployment_file")"
